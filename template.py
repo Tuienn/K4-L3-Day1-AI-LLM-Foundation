@@ -481,8 +481,11 @@ def batch_compare(prompts: list[str]) -> list[dict]:
         List các dict — mỗi dict là kết quả compare_models kèm thêm
         key "prompt" chứa prompt gốc.
     """
-    # TODO (bonus): lặp qua prompts, gọi compare_models, thêm key "prompt"
-    raise NotImplementedError("Implement batch_compare")
+    results = []
+    for prompt in prompts:
+        comparison = compare_models(prompt)
+        results.append({**comparison, "prompt": prompt})
+    return results
 
 
 def format_comparison_table(results: list[dict]) -> str:
@@ -492,8 +495,42 @@ def format_comparison_table(results: list[dict]) -> str:
     Cột: Prompt | GPT-4o Response | Mini Response | GPT-4o Latency | Mini Latency
     Gợi ý: cắt text dài còn 40 ký tự cho dễ nhìn.
     """
-    # TODO (bonus): dựng chuỗi bảng và trả về
-    raise NotImplementedError("Implement format_comparison_table")
+    def shorten(value: Any, width: int = 40) -> str:
+        text = " ".join(str(value).splitlines())
+        if len(text) <= width:
+            return text
+        return text[: width - 3] + "..."
+
+    headers = (
+        "Prompt",
+        "GPT-4o Response",
+        "Mini Response",
+        "GPT-4o Latency",
+        "Mini Latency",
+    )
+    rows = [
+        (
+            shorten(result.get("prompt", "")),
+            shorten(result.get("gpt4o_response", "")),
+            shorten(result.get("mini_response", "")),
+            f'{result.get("gpt4o_latency", 0.0):.3f}s',
+            f'{result.get("mini_latency", 0.0):.3f}s',
+        )
+        for result in results
+    ]
+    widths = [
+        max(len(headers[index]), *(len(row[index]) for row in rows))
+        for index in range(len(headers))
+    ]
+
+    def format_row(row: tuple[str, ...]) -> str:
+        cells = [value.ljust(widths[index]) for index, value in enumerate(row)]
+        return "| " + " | ".join(cells) + " |"
+
+    separator = "|-" + "-|-".join("-" * width for width in widths) + "-|"
+    return "\n".join(
+        [format_row(headers), separator, *(format_row(row) for row in rows)]
+    )
 
 
 # ---------------------------------------------------------------------------
