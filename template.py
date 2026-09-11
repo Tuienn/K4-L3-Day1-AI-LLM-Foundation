@@ -69,9 +69,20 @@ def call_openai(
         # (perf_counter là đồng hồ đo khoảng thời gian, độ phân giải cao trên
         #  mọi hệ điều hành; time.time() trên Windows có thể trả về 0.0)
     """
-    # TODO: import OpenAI, tạo client, gọi chat.completions.create,
-    #       đo start/end time, trả về (response_text, latency)
-    raise NotImplementedError("Implement call_openai")
+    from openai import OpenAI
+
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    start = time.perf_counter()
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+    )
+    latency = time.perf_counter() - start
+
+    return response.choices[0].message.content, latency
 
 
 # ---------------------------------------------------------------------------
@@ -92,8 +103,13 @@ def call_openai_mini(
     Gợi ý:
         Tái sử dụng call_openai() với model=OPENAI_MINI_MODEL — 1 dòng code.
     """
-    # TODO: gọi call_openai với model=OPENAI_MINI_MODEL
-    raise NotImplementedError("Implement call_openai_mini")
+    return call_openai(
+        prompt,
+        model=OPENAI_MINI_MODEL,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -116,8 +132,21 @@ def compare_models(prompt: str) -> dict:
                * PRICING_PER_1K_TOKENS["gpt-4o"]["output"]
         (0.75 từ ≈ 1 token — ước lượng thô; Part 2 sẽ tính chính xác hơn)
     """
-    # TODO: gọi call_openai và call_openai_mini, ghép dict kết quả
-    raise NotImplementedError("Implement compare_models")
+    gpt4o_text, gpt4o_latency = call_openai(prompt)
+    mini_text, mini_latency = call_openai_mini(prompt)
+    gpt4o_cost = (
+        (len(gpt4o_text.split()) / 0.75)
+        / 1000
+        * PRICING_PER_1K_TOKENS["gpt-4o"]["output"]
+    )
+
+    return {
+        "gpt4o_response": gpt4o_text,
+        "mini_response": mini_text,
+        "gpt4o_latency": gpt4o_latency,
+        "mini_latency": mini_latency,
+        "gpt4o_cost_estimate": gpt4o_cost,
+    }
 
 
 # ===========================================================================
